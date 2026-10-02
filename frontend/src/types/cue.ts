@@ -10,9 +10,11 @@ export type BeatName = 'jijifeng' | 'sijitou' | 'shuidiyu';
 export type Instrument = 'bangu' | 'daluo' | 'xiaoluo' | 'naobo';
 
 export interface PercussionCue {
-  /** 主键，uuid */
+  /** 主键，uuid（仅本机使用，跨机合并时不认它） */
   id: string;
-  /** 所属场次 id */
+  /** 锣鼓点业务编号，跨机认关系的稳定锚点（如 LUO-0001），由 db 层统一发放 */
+  cueCode: string;
+  /** 所属场次 id（本机外键；包内/底稿内以 sceneCode 关联） */
   sceneId: string;
   /** 锣鼓点名 */
   beatName: BeatName;

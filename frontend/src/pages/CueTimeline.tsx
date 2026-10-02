@@ -220,7 +220,7 @@ export default function CueTimeline() {
         message.success('锣鼓点已更新');
       }
     } else {
-      const row: CueRow = {
+      const row = {
         id: uuid(),
         sceneId,
         beatName: values.beatName,
@@ -231,7 +231,7 @@ export default function CueTimeline() {
         createdAt: stamp,
         updatedAt: stamp,
         revision: ROW_REVISION,
-      };
+      } as CueRow;
       await putCue(row);
       setCues((prev) => [...prev, row]);
       message.success(`已在 ${secondsToTimecode(atSecond)} 插入「${BEAT_NAME_LABEL[row.beatName]}」`);

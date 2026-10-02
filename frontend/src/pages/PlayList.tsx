@@ -30,6 +30,7 @@ import {
   PlusOutlined,
   ReloadOutlined,
   SearchOutlined,
+  SwapOutlined,
   UploadOutlined,
 } from '@ant-design/icons';
 import { ProgressRing } from '../components/common/ProgressRing';
@@ -209,6 +210,12 @@ export default function PlayList() {
           <Space wrap>
             <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
               新建剧目
+            </Button>
+            <Button icon={<SwapOutlined />} onClick={() => navigate('/merges')}>
+              合并台
+              {counts.pendingMerges ? (
+                <Tag color="error" style={{ marginInlineStart: 6 }}>{counts.pendingMerges}</Tag>
+              ) : null}
             </Button>
             <Button icon={<DownloadOutlined />} onClick={handleExport}>
               导出存档

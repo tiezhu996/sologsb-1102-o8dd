@@ -2,7 +2,18 @@
  * 首次打开应用时灌入的示例班社数据
  * 只在 plays 表为空时执行，保证界面第一次进入就有可点通的内容。
  */
-import { db, ROW_REVISION, type CueRow, type OperatorRow, type PlayRow, type RoleRow, type SceneRow } from './db';
+import {
+  db,
+  ROW_REVISION,
+  nextCode,
+  putHandoverBase,
+  type CueRow,
+  type HandoverBaseRow,
+  type OperatorRow,
+  type PlayRow,
+  type RoleRow,
+  type SceneRow,
+} from './db';
 import { uuid, nowIso } from './uuid';
 
 interface SeedSceneSpec {
@@ -277,6 +288,8 @@ export async function seedDatabase(): Promise<void> {
   const operatorRows: OperatorRow[] = OPERATORS.map((item) => ({
     ...item,
     id: uuid(),
+    operatorCode: '',
+    busySlots: item.busySlots.map((slot) => ({ ...slot, slotCode: '' })),
     assignedRoleIds: [],
     createdAt: stamp,
     updatedAt: stamp,
@@ -292,6 +305,7 @@ export async function seedDatabase(): Promise<void> {
     const playId = uuid();
     playRows.push({
       id: playId,
+      playCode: '',
       title: playSpec.title,
       genre: playSpec.genre,
       scriptText: playSpec.scriptText,
@@ -303,12 +317,13 @@ export async function seedDatabase(): Promise<void> {
       revision: ROW_REVISION,
     });
 
-    playSpec.scenes.forEach((sceneSpec, sceneIndex) => {
+    playSpec.scenes.forEach((sceneSpec) => {
       const sceneId = uuid();
       sceneRows.push({
         id: sceneId,
+        sceneCode: '',
         playId,
-        seq: sceneIndex + 1,
+        seq: sceneRows.filter((row) => row.playId === playId).length + 1,
         title: sceneSpec.title,
         durationMin: sceneSpec.durationMin,
         stageNote: sceneSpec.stageNote,
@@ -324,6 +339,7 @@ export async function seedDatabase(): Promise<void> {
         const roleId = uuid();
         roleRows.push({
           id: roleId,
+          roleCode: '',
           sceneId,
           name: roleSpec.name,
           roleType: roleSpec.roleType,
@@ -342,6 +358,7 @@ export async function seedDatabase(): Promise<void> {
         const lead = cueSpec.leadOperatorIndex === null ? null : operatorRows[cueSpec.leadOperatorIndex];
         cueRows.push({
           id: uuid(),
+          cueCode: '',
           sceneId,
           beatName: cueSpec.beatName,
           instrument: cueSpec.instrument,
@@ -356,6 +373,18 @@ export async function seedDatabase(): Promise<void> {
     });
   });
 
+  // 统一按稳定顺序发业务编号（与 v3 升级迁移同序，同源数据各机一致）
+  for (const row of playRows) row.playCode = await nextCode('play');
+  for (const row of operatorRows) {
+    row.operatorCode = await nextCode('operator');
+    for (const slot of row.busySlots) {
+      slot.slotCode = await nextCode('slot');
+    }
+  }
+  for (const row of sceneRows) row.sceneCode = await nextCode('scene');
+  for (const row of roleRows) row.roleCode = await nextCode('role');
+  for (const row of cueRows) row.cueCode = await nextCode('cue');
+
   await db.transaction('rw', db.plays, db.scenes, db.roles, db.operators, db.cues, async () => {
     await db.operators.bulkPut(operatorRows);
     await db.plays.bulkPut(playRows);
@@ -363,4 +392,72 @@ export async function seedDatabase(): Promise<void> {
     await db.roles.bulkPut(roleRows);
     await db.cues.bulkPut(cueRows);
   });
+
+  // 首次交接底稿 = 灌入后的全量数据，后续导出排演包即以此为 base
+  for (const play of playRows) {
+    const playScenes = sceneRows.filter((row) => row.playId === play.id);
+    const sceneIds = new Set(playScenes.map((row) => row.id));
+    const playRoles = roleRows.filter((row) => sceneIds.has(row.sceneId));
+    const playCues = cueRows.filter((row) => sceneIds.has(row.sceneId));
+    const opCodeById = new Map(operatorRows.map((row) => [row.id, row.operatorCode]));
+    const sceneCodeById = new Map(playScenes.map((row) => [row.id, row.sceneCode]));
+    const baseRow: HandoverBaseRow = {
+      playCode: play.playCode,
+      updatedAt: stamp,
+      snapshot: {
+        play: {
+          playCode: play.playCode,
+          title: play.title,
+          genre: play.genre,
+          scriptText: play.scriptText,
+          totalScenes: play.totalScenes,
+          premiereVenue: play.premiereVenue,
+          status: play.status,
+        },
+        scenes: playScenes.map((row) => ({
+          sceneCode: row.sceneCode,
+          playCode: play.playCode,
+          seq: row.seq,
+          title: row.title,
+          durationMin: row.durationMin,
+          stageNote: row.stageNote,
+          needsShadowScreen: row.needsShadowScreen,
+          progress: row.progress,
+        })),
+        roles: playRoles.map((row) => ({
+          roleCode: row.roleCode,
+          sceneCode: sceneCodeById.get(row.sceneId) ?? '',
+          name: row.name,
+          roleType: row.roleType,
+          propParts: [...row.propParts],
+          entranceCue: row.entranceCue,
+          lineNote: row.lineNote,
+          operatorCode: row.operatorId ? opCodeById.get(row.operatorId) ?? null : null,
+        })),
+        cues: playCues.map((row) => ({
+          cueCode: row.cueCode,
+          sceneCode: sceneCodeById.get(row.sceneId) ?? '',
+          beatName: row.beatName,
+          instrument: row.instrument,
+          atSecond: row.atSecond,
+          leadOperatorCode: row.leadOperator ? opCodeById.get(row.leadOperator) ?? null : null,
+          note: row.note,
+        })),
+        operators: operatorRows.map((row) => ({
+          operatorCode: row.operatorCode,
+          name: row.name,
+          skillTags: [...row.skillTags],
+          busySlots: row.busySlots.map((slot) => ({
+            slotCode: slot.slotCode as string,
+            weekday: slot.weekday,
+            startMinute: slot.startMinute,
+            durationMinute: slot.durationMinute,
+            label: slot.label,
+          })),
+          rehearsalHours: row.rehearsalHours,
+        })),
+      },
+    };
+    await putHandoverBase(baseRow);
+  }
 }

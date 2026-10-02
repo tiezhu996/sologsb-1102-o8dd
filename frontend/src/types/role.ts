@@ -10,9 +10,11 @@ export type RoleType = 'sheng' | 'dan' | 'jing' | 'chou' | 'shenguai';
 export type PropPart = 'toucha' | 'shenduan' | 'bingqi';
 
 export interface ShadowRole {
-  /** 主键，uuid */
+  /** 主键，uuid（仅本机使用，跨机合并时不认它） */
   id: string;
-  /** 所属场次 id */
+  /** 影人角色业务编号，跨机认关系的稳定锚点（如 YING-0001），由 db 层统一发放 */
+  roleCode: string;
+  /** 所属场次 id（本机外键；包内/底稿内以 sceneCode 关联） */
   sceneId: string;
   /** 角色名，如「白娘子」 */
   name: string;

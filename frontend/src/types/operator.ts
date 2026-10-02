@@ -11,8 +11,10 @@ export type Weekday = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
 /** 已排时段（用于冲突预警） */
 export interface BusySlot {
-  /** 主键，uuid */
+  /** 主键，uuid（仅本机使用） */
   id: string;
+  /** 时段业务编号，合并操耍人档期时的稳定锚点（如 SLOT-0001） */
+  slotCode?: string;
   /** 星期，0 = 周日 */
   weekday: Weekday;
   /** 起始「分钟偏移」，相对当日 08:00 计算，便于比较 */
@@ -24,8 +26,10 @@ export interface BusySlot {
 }
 
 export interface Operator {
-  /** 主键，uuid */
+  /** 主键，uuid（仅本机使用，跨机合并时不认它） */
   id: string;
+  /** 操耍人业务编号，跨机认关系的稳定锚点（如 CAO-0001），由 db 层统一发放 */
+  operatorCode: string;
   /** 姓名 */
   name: string;
   /** 技能标签 */

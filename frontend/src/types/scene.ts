@@ -7,9 +7,11 @@
 export type ShadowScreenSpec = 'small' | 'standard' | 'large' | 'twin';
 
 export interface Scene {
-  /** 主键，uuid */
+  /** 主键，uuid（仅本机使用，跨机合并时不认它） */
   id: string;
-  /** 所属剧目 id */
+  /** 场次业务编号，跨机认关系的稳定锚点（如 CH-0001），由 db 层统一发放 */
+  sceneCode: string;
+  /** 所属剧目 id（本机外键；包内/底稿内以 playCode 关联） */
   playId: string;
   /** 场序，从 1 开始，连续整数 */
   seq: number;

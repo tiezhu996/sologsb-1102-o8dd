@@ -75,7 +75,7 @@ export const useOperatorStore = create<OperatorStoreState>((set, get) => ({
 
   async createOperator(draft) {
     const stamp = nowIso();
-    const row: OperatorRow = {
+    const row = {
       id: uuid(),
       name: draft.name.trim() || '未具名师傅',
       skillTags: [...draft.skillTags],
@@ -85,7 +85,7 @@ export const useOperatorStore = create<OperatorStoreState>((set, get) => ({
       createdAt: stamp,
       updatedAt: stamp,
       revision: ROW_REVISION,
-    };
+    } as unknown as OperatorRow;
     await putOperator(row);
     await get().loadOperators();
     return row;

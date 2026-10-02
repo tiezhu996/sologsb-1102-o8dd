@@ -10,8 +10,10 @@ export type PlayGenre = 'traditional' | 'newly';
 export type PlayStatus = 'preparing' | 'rehearsing' | 'ready';
 
 export interface Play {
-  /** 主键，uuid */
+  /** 主键，uuid（仅本机使用，跨机合并时不认它） */
   id: string;
+  /** 剧目业务编号，跨机认关系的稳定锚点（如 JU-0001），由 db 层统一发放 */
+  playCode: string;
   /** 剧目名 */
   title: string;
   /** 剧种：传统折子 / 新编 */

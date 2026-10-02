@@ -133,7 +133,7 @@ export default function RoleAssign() {
 
   const handleCreate = async () => {
     const values = await form.validateFields();
-    const row: RoleRow = {
+    const row = {
       id: uuid(),
       sceneId,
       name: values.name.trim(),
@@ -145,7 +145,7 @@ export default function RoleAssign() {
       createdAt: nowIso(),
       updatedAt: nowIso(),
       revision: ROW_REVISION,
-    };
+    } as RoleRow;
     await putRole(row);
     setRoles((prev) => [...prev, row]);
     setModalOpen(false);

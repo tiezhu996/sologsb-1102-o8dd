@@ -6,6 +6,7 @@ import {
   DashboardOutlined,
   ReadOutlined,
   SoundOutlined,
+  SwapOutlined,
   TeamOutlined,
 } from '@ant-design/icons';
 import { ROUTES } from './router';
@@ -18,6 +19,7 @@ const { Header, Sider, Content, Footer } = Layout;
 /** 侧边导航：按当前路径高亮，场次/角色/锣鼓点页复用当前剧目上下文 */
 function buildSelectedKey(pathname: string, currentPlayId: string | null): string {
   if (pathname.startsWith('/operators')) return ROUTES.operators;
+  if (pathname.startsWith('/merges')) return ROUTES.merges;
   if (pathname.startsWith('/plays/') && currentPlayId) return ROUTES.scenes(currentPlayId);
   return ROUTES.plays;
 }
@@ -86,6 +88,16 @@ export default function App() {
                 disabled: !currentPlayId,
               },
               { key: ROUTES.operators, icon: <TeamOutlined />, label: '操耍人档' },
+              { key: ROUTES.merges, icon: <SwapOutlined />, label: (
+                <span>
+                  合并台 · 排演包
+                  {counts.pendingMerges ? (
+                    <Tag color="error" style={{ marginInlineStart: 6, fontSize: 11, lineHeight: '18px', padding: '0 6px' }}>
+                      {counts.pendingMerges} 待核
+                    </Tag>
+                  ) : null}
+                </span>
+              ) },
             ]}
           />
           <div style={{ padding: '12px 16px', color: 'rgba(242,223,184,0.6)', fontSize: 12 }}>

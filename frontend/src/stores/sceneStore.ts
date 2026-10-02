@@ -73,7 +73,7 @@ export const useSceneStore = create<SceneStoreState>((set, get) => ({
   async createScene(playId, draft) {
     const current = get().scenes.filter((scene) => scene.playId === playId);
     const stamp = nowIso();
-    const row: SceneRow = {
+    const row = {
       id: uuid(),
       playId,
       seq: current.length + 1,
@@ -85,7 +85,7 @@ export const useSceneStore = create<SceneStoreState>((set, get) => ({
       createdAt: stamp,
       updatedAt: stamp,
       revision: ROW_REVISION,
-    };
+    } as SceneRow;
     await putScene(row);
     await get().loadScenes(playId);
     return row;

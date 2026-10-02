@@ -116,7 +116,7 @@ export const usePlayStore = create<PlayStoreState>((set, get) => ({
   async createPlay(draft) {
     const stamp = nowIso();
     const playId = uuid();
-    const row: PlayRow = {
+    const row = {
       id: playId,
       title: draft.title.trim() || '未命名剧目',
       genre: draft.genre,
@@ -127,10 +127,10 @@ export const usePlayStore = create<PlayStoreState>((set, get) => ({
       createdAt: stamp,
       updatedAt: stamp,
       revision: ROW_REVISION,
-    };
+    } as PlayRow;
     await putPlay(row);
     // 新建剧目后自动生成「第一场」骨架，场次拆分入口开箱即用
-    const firstScene: SceneRow = {
+    const firstScene = {
       id: uuid(),
       playId,
       seq: 1,
@@ -142,7 +142,7 @@ export const usePlayStore = create<PlayStoreState>((set, get) => ({
       createdAt: stamp,
       updatedAt: stamp,
       revision: ROW_REVISION,
-    };
+    } as SceneRow;
     await putScene(firstScene);
     await get().loadPlays();
     get().selectPlay(playId);

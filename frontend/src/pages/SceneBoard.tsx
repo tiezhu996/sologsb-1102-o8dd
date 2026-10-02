@@ -26,10 +26,12 @@ import {
 import {
   ArrowLeftOutlined,
   CheckSquareOutlined,
+  FileTextOutlined,
   PlusOutlined,
   SaveOutlined,
   SoundOutlined,
   TeamOutlined,
+  UnorderedListOutlined,
 } from '@ant-design/icons';
 import { SceneCard } from '../components/common/SceneCard';
 import { EmptyState } from '../components/common/EmptyState';
@@ -41,7 +43,9 @@ import { ROUTES } from '../router';
 import { SHADOW_SCREEN_LABEL, SHADOW_SCREEN_OPTIONS, type SceneDraft, createEmptySceneDraft } from '../types/scene';
 import { minutesToReadable } from '../utils/timecode';
 import { formatStamp } from '../utils/uuid';
-import type { SceneRow } from '../utils/db';
+import { listAllRoles, listCuesByScene, type SceneRow } from '../utils/db';
+import { exportRehearsalPackageFile } from '../utils/packageIO';
+import { exportPlayCsvFile } from '../utils/export';
 
 export default function SceneBoard() {
   const { id: playId = '' } = useParams<{ id: string }>();
@@ -82,6 +86,10 @@ export default function SceneBoard() {
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [packageOpen, setPackageOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [brigadeName, setBrigadeName] = useState('');
+  const [brigadeNote, setBrigadeNote] = useState('');
 
   const play = plays.find((item) => item.id === playId) ?? null;
   const playStat = statOf(playId);
@@ -115,6 +123,56 @@ export default function SceneBoard() {
     next.splice(toIndex, 0, draggingId);
     await reorder(next);
     message.success('场序已调整');
+  };
+
+  /** 导出分队排演包（含上次交接底稿），离线带走 */
+  const handleExportPackage = async () => {
+    if (!brigadeName.trim()) {
+      message.warning('请填写分队名');
+      return;
+    }
+    setExporting(true);
+    try {
+      const { filename, pkg } = await exportRehearsalPackageFile({
+        playId,
+        brigadeName: brigadeName.trim(),
+        note: brigadeNote.trim(),
+      });
+      message.success(
+        `已导出排演包：${filename}。包号 ${pkg.packageCode}，${pkg.base ? '含上次交接底稿' : '为首包（无底稿）'}`,
+      );
+      setPackageOpen(false);
+      setBrigadeNote('');
+    } catch (error) {
+      message.error(`导出失败：${error instanceof Error ? error.message : '未知错误'}`);
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  /** 导出排练通告 CSV（剧目最终结果） */
+  const handleExportCallSheet = async () => {
+    if (!play) return;
+    try {
+      const allRoles = await listAllRoles();
+      const sceneIds = new Set(scenes.map((scene) => scene.id));
+      const cuesByScene = await Promise.all(
+        scenes.map(async (scene) => ({
+          sceneId: scene.id,
+          cues: await listCuesByScene(scene.id),
+        })),
+      );
+      const filename = exportPlayCsvFile(
+        play,
+        scenes,
+        allRoles.filter((role) => sceneIds.has(role.sceneId)),
+        cuesByScene.flatMap((group) => group.cues),
+        operators,
+      );
+      message.success(`排练通告已导出：${filename}`);
+    } catch (error) {
+      message.error(`排练通告导出失败：${error instanceof Error ? error.message : '未知错误'}`);
+    }
   };
 
   const handleCreate = async () => {
@@ -202,6 +260,20 @@ export default function SceneBoard() {
               onClick={() => activeSceneId && navigate(ROUTES.cues(activeSceneId))}
             >
               锣鼓点
+            </Button>
+            <Button icon={<FileTextOutlined />} onClick={() => void handleExportCallSheet()}>
+              排练通告 CSV
+            </Button>
+            <Button
+              icon={<UnorderedListOutlined />}
+              type="primary"
+              ghost
+              onClick={() => {
+                setBrigadeName(brigadeName || '');
+                setPackageOpen(true);
+              }}
+            >
+              导出排演包
             </Button>
           </Space>
         </div>
@@ -384,6 +456,37 @@ export default function SceneBoard() {
             <Slider min={0} max={100} step={5} marks={{ 0: '0', 50: '50', 100: '100' }} />
           </Form.Item>
         </Form>
+      </Modal>
+
+      <Modal
+        open={packageOpen}
+        title={`导出分队排演包 · ${play.title}`}
+        okText="导出排演包"
+        cancelText="取消"
+        confirmLoading={exporting}
+        onCancel={() => setPackageOpen(false)}
+        onOk={() => void handleExportPackage()}
+      >
+        <Space direction="vertical" size={10} style={{ width: '100%' }}>
+          <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+            包内含「上次交接底稿」与「本次改动」，回班社后在合并台按业务编号三方合并；
+            本机 uuid 不会带走，编号不同也不会硬套。
+          </Typography.Text>
+          <Input
+            placeholder="分队名，如：东路巡演一组"
+            value={brigadeName}
+            onChange={(event) => setBrigadeName(event.target.value)}
+            maxLength={30}
+          />
+          <Input.TextArea
+            rows={3}
+            placeholder="交接备注（可选）：本次主要改了哪些场、撤了哪些角色 / 时段"
+            value={brigadeNote}
+            onChange={(event) => setBrigadeNote(event.target.value)}
+            maxLength={200}
+            showCount
+          />
+        </Space>
       </Modal>
     </Space>
   );
