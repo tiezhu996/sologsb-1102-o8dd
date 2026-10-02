@@ -141,6 +141,29 @@ export function exportPlayCsvFile(
   return filename;
 }
 
+/**
+ * 全库排练通告汇总 CSV（剧目合并完成后的最终结果）。
+ * 每出戏一段，按剧种 / 状态 / 场次 / 角色指派 / 锣鼓点顺序输出。
+ */
+export function exportCallSheetBundleFile(
+  plays: Play[],
+  scenes: Scene[],
+  roles: ShadowRole[],
+  cues: PercussionCue[],
+  operators: Operator[],
+): string {
+  const ordered = [...plays].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const blocks = ordered.map((play) => {
+    const playScenes = scenes
+      .filter((scene) => scene.playId === play.id)
+      .sort((a, b) => a.seq - b.seq);
+    return exportPlayCsv(play, playScenes, roles, cues, operators);
+  });
+  const filename = `班社排练通告汇总-${stampSuffix()}.csv`;
+  download(filename, blocks.join('\n\n'), 'text/csv;charset=utf-8');
+  return filename;
+}
+
 /** 操耍人档导出为 CSV（含技能、冲突时段、已派角色数） */
 export function exportOperatorCsvFile(operators: Operator[], roles: ShadowRole[]): string {
   const header = ['姓名', '技能标签', '累计排练时长(小时)', '已派角色数', '已派角色', '冲突时段'];

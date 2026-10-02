@@ -5,6 +5,7 @@
 import { create } from 'zustand';
 import {
   ROW_REVISION,
+  getPlay,
   listScenesByPlay,
   putScene,
   putScenes,
@@ -14,6 +15,7 @@ import {
 import type { SceneDraft } from '../types/scene';
 import { clampProgress } from '../utils/timecode';
 import { nowIso, uuid } from '../utils/uuid';
+import { buildSceneCode, nextSequencedCode } from '../utils/bizCode';
 import { STORAGE_KEYS, readLocalFlag, writeLocalFlag } from '../utils/localStore';
 
 interface SceneStoreState {
@@ -72,9 +74,14 @@ export const useSceneStore = create<SceneStoreState>((set, get) => ({
 
   async createScene(playId, draft) {
     const current = get().scenes.filter((scene) => scene.playId === playId);
+    const play = await getPlay(playId);
     const stamp = nowIso();
     const row: SceneRow = {
       id: uuid(),
+      bizCode: nextSequencedCode(
+        current.map((item) => item.bizCode),
+        (seq) => buildSceneCode(play?.bizCode ?? 'J-X', seq),
+      ),
       playId,
       seq: current.length + 1,
       title: draft.title.trim() || `第 ${current.length + 1} 场`,

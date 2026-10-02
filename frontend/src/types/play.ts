@@ -10,8 +10,10 @@ export type PlayGenre = 'traditional' | 'newly';
 export type PlayStatus = 'preparing' | 'rehearsing' | 'ready';
 
 export interface Play {
-  /** 主键，uuid */
+  /** 主键，uuid（仅本机使用，跨分队合并一律认 bizCode） */
   id: string;
+  /** 业务编号：跨分队/跨机器认关系用，如 J-001（建剧目时自动生成，可改但需保持班社内唯一） */
+  bizCode: string;
   /** 剧目名 */
   title: string;
   /** 剧种：传统折子 / 新编 */

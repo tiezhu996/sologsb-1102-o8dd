@@ -70,6 +70,7 @@ import {
 } from '../utils/db';
 import { buildRulerTicks, secondsToPercent, secondsToTimecode, timecodeToSeconds } from '../utils/timecode';
 import { nowIso, uuid } from '../utils/uuid';
+import { buildCueCode, nextSequencedCode } from '../utils/bizCode';
 
 export default function CueTimeline() {
   const { id: sceneId = '' } = useParams<{ id: string }>();
@@ -222,6 +223,10 @@ export default function CueTimeline() {
     } else {
       const row: CueRow = {
         id: uuid(),
+        bizCode: nextSequencedCode(
+          cues.map((cue) => cue.bizCode),
+          (seq) => buildCueCode(scene?.bizCode ?? 'J-X-S01', seq),
+        ),
         sceneId,
         beatName: values.beatName,
         instrument: values.instrument,

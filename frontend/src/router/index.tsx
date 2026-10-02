@@ -12,6 +12,7 @@ const SceneBoard = lazy(() => import('../pages/SceneBoard'));
 const RoleAssign = lazy(() => import('../pages/RoleAssign'));
 const CueTimeline = lazy(() => import('../pages/CueTimeline'));
 const OperatorList = lazy(() => import('../pages/OperatorList'));
+const MergeCenter = lazy(() => import('../merge/MergeCenter'));
 
 /** 懒加载页面占位 */
 function RouteFallback() {
@@ -29,6 +30,7 @@ export const ROUTES = {
   roles: (sceneId: string): string => `/scenes/${sceneId}/roles`,
   cues: (sceneId: string): string => `/scenes/${sceneId}/cues`,
   operators: '/operators',
+  merge: '/merge',
 } as const;
 
 export const appRoutes: RouteObject[] = [
@@ -42,6 +44,7 @@ export const appRoutes: RouteObject[] = [
       { path: 'scenes/:id/roles', element: withSuspense(<RoleAssign />) },
       { path: 'scenes/:id/cues', element: withSuspense(<CueTimeline />) },
       { path: 'operators', element: withSuspense(<OperatorList />) },
+      { path: 'merge', element: withSuspense(<MergeCenter />) },
       { path: '*', element: <Navigate to={ROUTES.plays} replace /> },
     ],
   },

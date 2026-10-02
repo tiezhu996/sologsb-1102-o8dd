@@ -27,6 +27,7 @@ import {
   DownloadOutlined,
   EditOutlined,
   ExportOutlined,
+  FileTextOutlined,
   PlusOutlined,
   ReloadOutlined,
   SearchOutlined,
@@ -46,7 +47,8 @@ import {
   type PlayDraft,
 } from '../types/play';
 import type { DatabaseSnapshot } from '../utils/db';
-import { exportBundleJson } from '../utils/export';
+import { listAllRoles, listOperators, listScenesByPlay, listCuesByScenes } from '../utils/db';
+import { exportBundleJson, exportCallSheetBundleFile, exportPlayCsvFile } from '../utils/export';
 import { formatStamp } from '../utils/uuid';
 import { minutesToReadable } from '../utils/timecode';
 
@@ -179,8 +181,39 @@ export default function PlayList() {
     }
   };
 
-  const handleReset = () => {
-    modal.confirm({
+  /** 导出某出戏合并后的排练通告（剧目库展示的就是最终结果） */
+  const handleExportCallSheet = async (playId: string, title: string) => {
+    const play = plays.find((item) => item.id === playId);
+    if (!play) return;
+    const scenes = await listScenesByPlay(playId);
+    const sceneIds = scenes.map((scene) => scene.id);
+    const [roles, cues, operators] = await Promise.all([
+      listAllRoles(),
+      sceneIds.length > 0 ? listCuesByScenes(sceneIds) : Promise.resolve([]),
+      listOperators(),
+    ]);
+    const playRoles = roles.filter((role) => sceneIds.includes(role.sceneId));
+    const filename = exportPlayCsvFile(play, scenes, playRoles, cues, operators);
+    message.success(`《${title}》排练通告已导出：${filename}`);
+  };
+
+  /** 全库排练通告汇总（合并最终结果） */
+  const handleExportAllCallSheets = async () => {
+    if (plays.length === 0) {
+      message.warning('还没有剧目可导出');
+      return;
+    }
+    const [roles, operators] = await Promise.all([listAllRoles(), listOperators()]);
+    const scenesPerPlay = await Promise.all(plays.map((play) => listScenesByPlay(play.id)));
+    const allScenes = scenesPerPlay.flat();
+    const allSceneIds = new Set(allScenes.map((scene) => scene.id));
+    const allCues = allSceneIds.size > 0 ? await listCuesByScenes([...allSceneIds]) : [];
+    const playRoles = roles.filter((role) => allSceneIds.has(role.sceneId));
+    const filename = exportCallSheetBundleFile(plays, allScenes, playRoles, allCues, operators);
+    message.success(`班社排练通告汇总已导出：${filename}`);
+  };
+
+  const handleReset = () => {    modal.confirm({
       title: '重置为示例班社数据？',
       content: '当前本地数据会被清空，并重新灌入三出示例剧目。',
       okText: '重置',
@@ -212,6 +245,9 @@ export default function PlayList() {
             </Button>
             <Button icon={<DownloadOutlined />} onClick={handleExport}>
               导出存档
+            </Button>
+            <Button icon={<FileTextOutlined />} onClick={() => void handleExportAllCallSheets()}>
+              排练通告汇总
             </Button>
             <Button icon={<UploadOutlined />} onClick={() => fileInputRef.current?.click()}>
               导入存档
@@ -303,6 +339,7 @@ export default function PlayList() {
                       <Space size={6} wrap>
                         <Typography.Text strong>{play.title}</Typography.Text>
                         {isCurrent ? <Tag color="#7a1f1f">当前剧目</Tag> : null}
+                        <Tag className="gb-mono" style={{ fontSize: 11 }}>{play.bizCode}</Tag>
                       </Space>
                     }
                     extra={<Tag color={PLAY_STATUS_COLOR[play.status]}>{PLAY_STATUS_LABEL[play.status]}</Tag>}
@@ -319,6 +356,16 @@ export default function PlayList() {
                         >
                           场次
                         </Button>
+                      </Tooltip>,
+                      <Tooltip title="导出这出戏的排练通告（最终结果）" key="callsheet">
+                        <Button
+                          type="link"
+                          icon={<FileTextOutlined />}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            void handleExportCallSheet(play.id, play.title);
+                          }}
+                        />
                       </Tooltip>,
                       <Tooltip title="编辑剧目" key="edit">
                         <Button

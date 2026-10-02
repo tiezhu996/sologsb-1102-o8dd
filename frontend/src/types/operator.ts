@@ -13,6 +13,8 @@ export type Weekday = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 export interface BusySlot {
   /** 主键，uuid */
   id: string;
+  /** 业务编号：操耍人内唯一（如 M-001-B01），离线合并按它认时段 */
+  bizCode: string;
   /** 星期，0 = 周日 */
   weekday: Weekday;
   /** 起始「分钟偏移」，相对当日 08:00 计算，便于比较 */
@@ -24,8 +26,10 @@ export interface BusySlot {
 }
 
 export interface Operator {
-  /** 主键，uuid */
+  /** 主键，uuid（仅本机使用） */
   id: string;
+  /** 操耍人业务编号：班社内唯一，如 M-001（两台机器编号不同不能硬套） */
+  bizCode: string;
   /** 姓名 */
   name: string;
   /** 技能标签 */

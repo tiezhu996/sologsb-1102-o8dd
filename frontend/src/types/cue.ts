@@ -10,9 +10,11 @@ export type BeatName = 'jijifeng' | 'sijitou' | 'shuidiyu';
 export type Instrument = 'bangu' | 'daluo' | 'xiaoluo' | 'naobo';
 
 export interface PercussionCue {
-  /** 主键，uuid */
+  /** 主键，uuid（仅本机使用） */
   id: string;
-  /** 所属场次 id */
+  /** 业务编号：场区内唯一，如 J-001-S03-C01 */
+  bizCode: string;
+  /** 所属场次 id（本机关系；合并时按 sceneBizCode 重建） */
   sceneId: string;
   /** 锣鼓点名 */
   beatName: BeatName;

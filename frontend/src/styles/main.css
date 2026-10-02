@@ -194,3 +194,23 @@ body::before {
     padding: 12px;
   }
 }
+
+/* --------------------------- 离线排演包合并 --------------------------- */
+
+.gb-conflict-field {
+  border: 1px dashed rgba(122, 31, 31, 0.35);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: #fffdf8;
+}
+
+.gb-conflict-field .ant-radio-wrapper {
+  align-items: flex-start;
+  white-space: normal;
+}
+
+.gb-conflict-picked {
+  background: rgba(201, 150, 60, 0.12);
+  border-radius: 6px;
+  padding: 2px 6px;
+}

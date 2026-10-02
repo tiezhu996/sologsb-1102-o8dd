@@ -7,9 +7,11 @@
 export type ShadowScreenSpec = 'small' | 'standard' | 'large' | 'twin';
 
 export interface Scene {
-  /** 主键，uuid */
+  /** 主键，uuid（仅本机使用） */
   id: string;
-  /** 所属剧目 id */
+  /** 业务编号：剧目内唯一，如 J-001-S03 */
+  bizCode: string;
+  /** 所属剧目 id（本机关系；合并时按 playBizCode 重建） */
   playId: string;
   /** 场序，从 1 开始，连续整数 */
   seq: number;

@@ -64,6 +64,7 @@ import {
   type SceneRow,
 } from '../utils/db';
 import { nowIso, uuid } from '../utils/uuid';
+import { buildRoleCode, nextSequencedCode } from '../utils/bizCode';
 
 export default function RoleAssign() {
   const { id: sceneId = '' } = useParams<{ id: string }>();
@@ -135,6 +136,10 @@ export default function RoleAssign() {
     const values = await form.validateFields();
     const row: RoleRow = {
       id: uuid(),
+      bizCode: nextSequencedCode(
+        roles.map((role) => role.bizCode),
+        (seq) => buildRoleCode(scene?.bizCode ?? 'J-X-S01', seq),
+      ),
       sceneId,
       name: values.name.trim(),
       roleType: values.roleType,

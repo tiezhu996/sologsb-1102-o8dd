@@ -4,6 +4,13 @@
  */
 import { db, ROW_REVISION, type CueRow, type OperatorRow, type PlayRow, type RoleRow, type SceneRow } from './db';
 import { uuid, nowIso } from './uuid';
+import {
+  buildCueCode,
+  buildOperatorCode,
+  buildPlayCode,
+  buildRoleCode,
+  buildSceneCode,
+} from './bizCode';
 
 interface SeedSceneSpec {
   title: string;
@@ -37,7 +44,11 @@ interface SeedPlaySpec {
   scenes: SeedSceneSpec[];
 }
 
-const OPERATORS: Array<Pick<OperatorRow, 'name' | 'skillTags' | 'busySlots' | 'rehearsalHours'>> = [
+const OPERATORS: Array<
+  Pick<OperatorRow, 'name' | 'skillTags' | 'rehearsalHours'> & {
+    busySlots: Array<Omit<OperatorRow['busySlots'][number], 'bizCode'>>;
+  }
+> = [
   {
     name: '霍连生',
     skillTags: ['qianzi', 'lianben'],
@@ -274,24 +285,34 @@ const PLAYS: SeedPlaySpec[] = [
 /** 灌入示例数据 */
 export async function seedDatabase(): Promise<void> {
   const stamp = nowIso();
-  const operatorRows: OperatorRow[] = OPERATORS.map((item) => ({
-    ...item,
-    id: uuid(),
-    assignedRoleIds: [],
-    createdAt: stamp,
-    updatedAt: stamp,
-    revision: ROW_REVISION,
-  }));
+  const operatorRows: OperatorRow[] = OPERATORS.map((item, operatorIndex) => {
+    const bizCode = buildOperatorCode(operatorIndex + 1);
+    return {
+      ...item,
+      id: uuid(),
+      bizCode,
+      busySlots: item.busySlots.map((slot, slotIndex) => ({
+        ...slot,
+        bizCode: `${bizCode}-B${String(slotIndex + 1).padStart(2, '0')}`,
+      })),
+      assignedRoleIds: [],
+      createdAt: stamp,
+      updatedAt: stamp,
+      revision: ROW_REVISION,
+    };
+  });
 
   const playRows: PlayRow[] = [];
   const sceneRows: SceneRow[] = [];
   const roleRows: RoleRow[] = [];
   const cueRows: CueRow[] = [];
 
-  PLAYS.forEach((playSpec) => {
+  PLAYS.forEach((playSpec, playIndex) => {
     const playId = uuid();
+    const playCode = buildPlayCode(playIndex + 1);
     playRows.push({
       id: playId,
+      bizCode: playCode,
       title: playSpec.title,
       genre: playSpec.genre,
       scriptText: playSpec.scriptText,
@@ -305,8 +326,10 @@ export async function seedDatabase(): Promise<void> {
 
     playSpec.scenes.forEach((sceneSpec, sceneIndex) => {
       const sceneId = uuid();
+      const sceneCode = buildSceneCode(playCode, sceneIndex + 1);
       sceneRows.push({
         id: sceneId,
+        bizCode: sceneCode,
         playId,
         seq: sceneIndex + 1,
         title: sceneSpec.title,
@@ -319,11 +342,12 @@ export async function seedDatabase(): Promise<void> {
         revision: ROW_REVISION,
       });
 
-      sceneSpec.roles.forEach((roleSpec) => {
+      sceneSpec.roles.forEach((roleSpec, roleIndex) => {
         const operator = roleSpec.operatorIndex === null ? null : operatorRows[roleSpec.operatorIndex];
         const roleId = uuid();
         roleRows.push({
           id: roleId,
+          bizCode: buildRoleCode(sceneCode, roleIndex + 1),
           sceneId,
           name: roleSpec.name,
           roleType: roleSpec.roleType,
@@ -338,10 +362,11 @@ export async function seedDatabase(): Promise<void> {
         if (operator) operator.assignedRoleIds.push(roleId);
       });
 
-      sceneSpec.cues.forEach((cueSpec) => {
+      sceneSpec.cues.forEach((cueSpec, cueIndex) => {
         const lead = cueSpec.leadOperatorIndex === null ? null : operatorRows[cueSpec.leadOperatorIndex];
         cueRows.push({
           id: uuid(),
+          bizCode: buildCueCode(sceneCode, cueIndex + 1),
           sceneId,
           beatName: cueSpec.beatName,
           instrument: cueSpec.instrument,

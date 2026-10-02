@@ -16,6 +16,7 @@ import {
 import type { BusySlot, OperatorDraft } from '../types/operator';
 import { slotsOverlap, type SlotRange } from '../types/operator';
 import { nowIso, uuid } from '../utils/uuid';
+import { buildOperatorCode, nextSequencedCode } from '../utils/bizCode';
 
 /** 指派/解绑结果：被冲突时段拦截时返回 blocked 与原因 */
 export interface AssignResult {
@@ -35,7 +36,7 @@ interface OperatorStoreState {
     patch: Partial<Omit<OperatorRow, 'id' | 'createdAt' | 'revision'>>,
   ) => Promise<void>;
   deleteOperator: (operatorId: string) => Promise<void>;
-  addBusySlot: (operatorId: string, slot: Omit<BusySlot, 'id'>) => Promise<BusySlot>;
+  addBusySlot: (operatorId: string, slot: Omit<BusySlot, 'id' | 'bizCode'>) => Promise<BusySlot>;
   removeBusySlot: (operatorId: string, slotId: string) => Promise<void>;
   syncAssignments: (roles: RoleRow[]) => Promise<void>;
   operatorOfRole: (roleId: string) => OperatorRow | undefined;
@@ -75,8 +76,13 @@ export const useOperatorStore = create<OperatorStoreState>((set, get) => ({
 
   async createOperator(draft) {
     const stamp = nowIso();
+    const bizCode = nextSequencedCode(
+      (await listOperators()).map((item) => item.bizCode),
+      buildOperatorCode,
+    );
     const row: OperatorRow = {
       id: uuid(),
+      bizCode,
       name: draft.name.trim() || '未具名师傅',
       skillTags: [...draft.skillTags],
       busySlots: [],
@@ -105,8 +111,12 @@ export const useOperatorStore = create<OperatorStoreState>((set, get) => ({
 
   async addBusySlot(operatorId, slot) {
     const existing = get().operators.find((item) => item.id === operatorId);
-    const created: BusySlot = { ...slot, id: uuid() };
-    if (!existing) return created;
+    if (!existing) return { ...slot, id: uuid(), bizCode: 'M-X-B01' };
+    const bizCode = nextSequencedCode(
+      existing.busySlots.map((item) => item.bizCode),
+      (seq) => `${existing.bizCode}-B${String(seq).padStart(2, '0')}`,
+    );
+    const created: BusySlot = { ...slot, id: uuid(), bizCode };
     await putOperator({
       ...existing,
       busySlots: [...existing.busySlots, created],

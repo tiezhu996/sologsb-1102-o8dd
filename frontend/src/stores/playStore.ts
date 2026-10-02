@@ -22,6 +22,7 @@ import {
 } from '../utils/db';
 import type { PlayDraft, PlayGenre, PlayStatus } from '../types/play';
 import { nowIso, uuid } from '../utils/uuid';
+import { buildPlayCode, buildSceneCode, nextSequencedCode } from '../utils/bizCode';
 import { STORAGE_KEYS, readLocal, writeLocal } from '../utils/localStore';
 
 /** 新建剧目时自动生成的场次数量（拆场次入口的首场模板） */
@@ -116,8 +117,13 @@ export const usePlayStore = create<PlayStoreState>((set, get) => ({
   async createPlay(draft) {
     const stamp = nowIso();
     const playId = uuid();
+    const playCode = nextSequencedCode(
+      (await listPlays()).map((item) => item.bizCode),
+      buildPlayCode,
+    );
     const row: PlayRow = {
       id: playId,
+      bizCode: playCode,
       title: draft.title.trim() || '未命名剧目',
       genre: draft.genre,
       scriptText: draft.scriptText.trim(),
@@ -132,6 +138,7 @@ export const usePlayStore = create<PlayStoreState>((set, get) => ({
     // 新建剧目后自动生成「第一场」骨架，场次拆分入口开箱即用
     const firstScene: SceneRow = {
       id: uuid(),
+      bizCode: buildSceneCode(playCode, 1),
       playId,
       seq: 1,
       title: '第一场·待命名',
